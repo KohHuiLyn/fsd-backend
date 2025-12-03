@@ -117,7 +117,6 @@ async function dynamicUpdate(fields) {
         WHERE 
             id = $1
         RETURNING id, user_id, name, notes, due_at, created_at, updated_at;
-        RETURNING id, user_id, name, notes, due_at, created_at, updated_at;
     `;
     return updateQuery;
 } 
@@ -149,7 +148,6 @@ export {
     isEligiblequery,
     insertReminderQuery,
     devSelectByIDQuery, devSelectAllQuery,
-    selectByIDuserIDQuery, getByUserIDQuery, getDueSoonQuery,
     selectByIDuserIDQuery, getByUserIDQuery, getDueSoonQuery,
     dynamicUpdate,
     deleteQuery,

@@ -9,7 +9,7 @@ from flask import Flask, request, jsonify, redirect, abort
 from werkzeug.utils import secure_filename
 
 # ---------- Read config once from Secrets Manager ----------
-SECRET_NAME = os.environ.get("SECRET_NAME", "itlm-s3-secret")
+SECRET_NAME = os.environ.get("SECRET_NAME", "fsd-s3-secret")
 SM_REGION = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")  # optional
 
 def read_secret(name: str) -> dict:
@@ -27,12 +27,11 @@ S3_BUCKET = cfg.get("S3_BUCKET") or ""
 if not S3_BUCKET:
     raise RuntimeError("Secret must include S3_BUCKET")
 
-S3_REGION = cfg.get("S3_REGION") or SM_REGION or "us-east-1"
+S3_REGION = cfg.get("S3_REGION") or SM_REGION or "ap-southeast-1"
 ALLOWED_MIME_PREFIXES = tuple(cfg.get("ALLOWED_MIME_PREFIXES", ["image/"]))
 MAX_CONTENT_LENGTH_MB = int(cfg.get("MAX_CONTENT_LENGTH_MB", 10))
 
-# Prefer role credentials. If keys are present in the secret (e.g., for local dev),
-# boto3 will use them.
+# IDEALLY role credentials. keys are present in the secret for local dev boto 3
 s3_kwargs = {"region_name": S3_REGION}
 if cfg.get("AWS_ACCESS_KEY_ID") and cfg.get("AWS_SECRET_ACCESS_KEY"):
     s3_kwargs["aws_access_key_id"] = cfg["AWS_ACCESS_KEY_ID"]
@@ -50,7 +49,7 @@ def _key_for(id_: str) -> str:
 def _is_allowed_mime(mimetype: str) -> bool:
     return any(mimetype.startswith(p) for p in ALLOWED_MIME_PREFIXES)
 
-@app.get("/health")
+@app.get("/")
 def health():
     return {"ok": True, "bucket": S3_BUCKET, "region": S3_REGION}
 

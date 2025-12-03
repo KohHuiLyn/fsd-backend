@@ -68,5 +68,5 @@ app.use("/auth", authRoutes);
 app.use(errorHandler);
 
 // const PORT = process.env.PORT || 3000;
-const PORT = 3002;
+const PORT = process.env.PORT;
 app.listen(PORT, () => console.log(`Login-service running on port ${PORT}`));

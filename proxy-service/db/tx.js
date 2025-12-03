@@ -23,7 +23,7 @@ async function isElligible({userID, id}) {
   }
 }
 
-// const USER_SERVICE_URL = "http://itlm-photo-cloudmapservice.itlm-photo-namespace:8000";
+// const USER_SERVICE_URL = "http://fsd-photo-cloudmapservice.fsd-photo-namespace:8000";
 
 // async function getS3ID({file}) {
 //   try {

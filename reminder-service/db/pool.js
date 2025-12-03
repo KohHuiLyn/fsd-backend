@@ -15,11 +15,11 @@ const client = new SecretsManagerClient({
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// const caCert = fs.readFileSync(path.join(__dirname, 'cert', 'global-bundle.pem')).toString();
+const caCert = fs.readFileSync(path.join(__dirname, 'cert', 'global-bundle.pem')).toString();
 // const atsRoot = fs.readFileSync(path.join(__dirname, 'cert', 'AmazonRootCA1.pem'),'utf8');
 const atsRoot = fs.readFileSync(path.join(__dirname, 'cert', 'AmazonRootCA1.pem')).toString(); // disable ca: caCert, enalble require:true
-// const secret_name = "itsa-db-service-user";
-const secret_name = "itlm-proxy-service-user";
+const secret_name = process.env.DB_SECRET;
+const db_name = process.env.DB_NAME;
 
 async function initPool() {
   try {
@@ -37,7 +37,7 @@ async function initPool() {
       port: secret.port,
       user: secret.username,
       password: secret.password,
-      database: 'reminder_db',
+      database: db_name, //'reminder_db',
       max: 10,
       idleTimeoutMillis: 3000,
       connectionTimeoutMillis: 5000,
@@ -45,8 +45,8 @@ async function initPool() {
       ssl: {
         require: true,
         rejectUnauthorized: false,
-        // ca: caCert,
-        // servername: secret.host,
+        ca: caCert,
+        // servername: secret.host, // for connecting to proxy but no money
       },
     });
     return pool;

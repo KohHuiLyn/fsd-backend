@@ -15,11 +15,11 @@ const client = new SecretsManagerClient({
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// const caCert = fs.readFileSync(path.join(__dirname, 'cert', 'global-bundle.pem')).toString();
+const caCert = fs.readFileSync(path.join(__dirname, 'cert', 'global-bundle.pem')).toString();
 // const atsRoot = fs.readFileSync(path.join(__dirname, 'cert', 'AmazonRootCA1.pem'),'utf8');
 const atsRoot = fs.readFileSync(path.join(__dirname, 'cert', 'AmazonRootCA1.pem')).toString(); // disable ca: caCert, enalble require:true
-// const secret_name = "itsa-db-service-user";
-const secret_name = "itlm-proxy-service-user";
+// const secret_name = "fsd-proxy-service-user";
+const secret_name = process.env.DB_SECRET;
 
 async function initPool() {
   try {
@@ -44,8 +44,8 @@ async function initPool() {
       ssl: {
         require: true,
         rejectUnauthorized: true,
-        // ca: caCert,
-        servername: secret.host,
+        ca: caCert,
+        // servername: secret.host,
       },
     });
     return pool;

@@ -192,7 +192,6 @@ async function updateReminder({ id, userID, rName, notes, isActive, dueAt, dueDa
     } 
 
     const params = [id, ...values];
-    const params = [id, ...values];
 
     await client.query('BEGIN');
 
@@ -210,12 +209,12 @@ async function updateReminder({ id, userID, rName, notes, isActive, dueAt, dueDa
   }
 }
 
-async function deleteReminder({id, userID}) {
+// async function deleteReminder({id, userID}) {
 async function deleteReminder({id, userID}) {
   const client = await pool.connect();
   try {
     const ok = await isElligible({ id, userID, client});
-    const ok = await isElligible({ id, userID, client});
+    // const ok = await isElligible({ id, userID, client});
     if (!ok) throw new Error('Not Elligible');
 
     await client.query('BEGIN');
@@ -235,7 +234,6 @@ async function deleteReminder({id, userID}) {
 }
 
 export { createReminder,
-          getReminderByID, getRemindersByUserID, getRemindersDueSoon,
           getReminderByID, getRemindersByUserID, getRemindersDueSoon,
           updateReminder,
           deleteReminder

@@ -30,17 +30,18 @@ RUN pip install --upgrade pip && pip install -r requirements.txt \
 COPY app.py .
 
 # Expose Gunicorn port
-EXPOSE 8000
+# EXPOSE 8000
+EXPOSE 5000
 
 # Basic healthcheck hits /health
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl -f http://127.0.0.1:8000/health || exit 1
-
+# HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl -f http://127.0.0.1:8000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl -f http://127.0.0.1:5000/health || exit 1
 # Run as non-root
 USER appuser
 
 # Start Gunicorn (tweak workers/threads per CPU)
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--threads", "4", "--timeout", "60", "app:app"]
-
+# CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--threads", "4", "--timeout", "60", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "4", "--timeout", "60", "app:app"]
 
 
 
