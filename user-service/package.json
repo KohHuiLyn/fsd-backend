@@ -1,0 +1,36 @@
+{
+  "name": "user-service",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "To make it easy for you to get started with GitLab, here's a list of recommended next steps.",
+  "main": "index.js",
+  "scripts": {
+    "test": "cross-env NODE_ENV=test node --experimental-vm-modules node_modules/jest/bin/jest.js --colors --coverage --runInBand"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitlab.com/cs302-2025/g4-team1/plantpal/user-service.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://gitlab.com/cs302-2025/g4-team1/plantpal/user-service/issues"
+  },
+  "homepage": "https://gitlab.com/cs302-2025/g4-team1/plantpal/user-service#readme",
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.929.0",
+    "@prisma/client": "^6.19.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "pg": "^8.16.3",
+    "prisma": "^6.19.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "jest": "^30.2.0",
+    "supertest": "^7.1.4"
+  }
+}

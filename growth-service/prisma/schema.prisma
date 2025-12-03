@@ -1,0 +1,11 @@
+model GrowthRecord {
+  id              String   @id @default(uuid())
+  userPlantId     String
+  imageUrl        String
+  diagnosisResult String
+  confidence      Float
+  notes           String?    // Optional field for user notes
+  createdAt       DateTime @default(now())
+
+  @@index([userPlantId])
+}

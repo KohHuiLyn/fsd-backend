@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    /* ---------- Output ---------- */
+    "rootDir": "./src", // Where your TypeScript source lives
+    "outDir": "./dist", // Where compiled JS goes
+    "module": "ESNext", // Works fine for Node 20 ESM or nodenext
+    "target": "ES2022", // Modern JS target
+    "moduleResolution": "node", // Simpler for Docker builds
+    "esModuleInterop": true, // Enables clean `import express from "express"`
+    "resolveJsonModule": true, // Allow importing JSON (if needed)
+    "sourceMap": true, // Useful for debugging
+
+    /* ---------- Node Environment ---------- */
+    "types": ["node"], // Node.js globals available
+    "lib": ["esnext"],
+
+    /* ---------- Strictness ---------- */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "skipLibCheck": true,
+
+    /* ---------- Module Syntax ---------- */
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

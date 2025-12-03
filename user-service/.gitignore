@@ -1,0 +1,79 @@
+# ────────────────────────────────
+# Node.js / npm
+# ────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+pnpm-lock.yaml
+
+# ────────────────────────────────
+# Environment & Config
+# ────────────────────────────────
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+*.env.backup
+*.env.example  # Optional: keep if you have template
+
+# ────────────────────────────────
+# Prisma
+# ────────────────────────────────
+/prisma/dev.db
+/prisma/test.db
+/prisma/generated/
+prisma/migrations/*/README.md
+.prisma/
+
+# ────────────────────────────────
+# Build Artifacts
+# ────────────────────────────────
+dist/
+build/
+coverage/
+tmp/
+temp/
+.cache/
+out/
+
+# ────────────────────────────────
+# Logs
+# ────────────────────────────────
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+
+# ────────────────────────────────
+# OS-specific
+# ────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ────────────────────────────────
+# IDE / Editor files
+# ────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ────────────────────────────────
+# Docker
+# ────────────────────────────────
+docker-compose.override.yml
+*.tar
+*.tgz
+
+# ────────────────────────────────
+# GitLab / CI
+# ────────────────────────────────
+.gitlab-ci-local*
+.gitlab-runner/
+coverage-final.json
+test-results/
+    

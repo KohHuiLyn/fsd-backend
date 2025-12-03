@@ -1,0 +1,10 @@
+{
+  "name": "notification-lambda",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/handler.js",
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.670.0",
+    "twilio": "^4.23.0"
+  }
+}

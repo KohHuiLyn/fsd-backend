@@ -1,0 +1,48 @@
+# ===============================
+# GitLab CI/CD Pipeline for Notification Lambda
+# ===============================
+# ✔ Lint & Test optional (lightweight CI)
+# ✔ Build & Deploy automated via AWS SAM
+# ✔ Uses GitLab CI/CD variables for AWS credentials
+# ===============================
+
+stages:
+  - build
+  - deploy
+
+# ===============================
+# Build Stage
+# ===============================
+build:
+  stage: build
+  image: public.ecr.aws/sam/build-nodejs20.x:latest
+  script:
+    - echo "Building Notification Lambda with AWS SAM..."
+    - sam --version
+    - sam build
+  artifacts:
+    paths:
+      - .aws-sam/
+  rules:
+    - if: $CI_COMMIT_BRANCH
+
+# ===============================
+# Deploy Stage
+# ===============================
+deploy:
+  stage: deploy
+  image: public.ecr.aws/sam/build-nodejs20.x:latest
+  needs: [build]
+  script:
+    - echo "Deploying Notification Lambda to AWS..."
+    - |
+      sam deploy \
+        --no-confirm-changeset \
+        --stack-name ${STACK_NAME} \
+        --region ${AWS_REGION} \
+        --capabilities CAPABILITY_IAM \
+        --resolve-s3
+  environment:
+    name: production
+  only:
+    - main

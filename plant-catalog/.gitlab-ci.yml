@@ -1,0 +1,32 @@
+stages: [build, deploy]
+
+build:
+  stage: build
+  image: public.ecr.aws/sam/build-nodejs20.x:latest
+  script:
+    - sam --version
+    - sam build
+  artifacts:
+    paths: [.aws-sam/]
+  rules:
+    - if: $CI_COMMIT_BRANCH
+
+deploy:
+  stage: deploy
+  image: public.ecr.aws/sam/build-nodejs20.x:latest
+  needs: [build]
+  script:
+    - |
+      sam deploy \
+        --no-confirm-changeset \
+        --stack-name ${STACK_NAME} \
+        --region ${AWS_REGION} \
+        --capabilities CAPABILITY_IAM \
+        --resolve-s3 \
+        --parameter-overrides \
+          PerenualApiKey=${PERENUAL_API_KEY} \
+          PublicApiId=${PUBLIC_API_ID}
+  only:
+    - main
+  environment:
+    name: production

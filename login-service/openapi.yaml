@@ -1,0 +1,221 @@
+openapi: 3.0.3
+info:
+  title: PlantPal Login Service API
+  version: 1.1.0
+  description: |
+    The **Login-Service** handles authentication and user registration for the PlantPal ecosystem.
+    It orchestrates with the **User-Service** to verify credentials and create new user records.
+    This documentation defines the REST API contract for login, registration, and health checks.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  contact:
+    name: PlantPal Login Service Gitlab
+    url: https://gitlab.com/cs302-2025/g4-team1/plantpal/login-service
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+  # - url: https://plantpal-login.example.com
+  #   description: Production endpoint (ECS + CloudFront)
+
+tags:
+  - name: Authentication
+    description: Endpoints related to login, registration, and user authentication
+  - name: System
+    description: System health and monitoring endpoints
+
+paths:
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Authenticate user credentials
+      description: |
+        Verifies a user's email and password by delegating to the **User-Service**.
+        On success, returns a signed **JWT token** for use in subsequent requests.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: test@plantpal.com
+                password:
+                  type: string
+                  format: password
+                  example: password123
+      responses:
+        "200":
+          description: Login successful — JWT token returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginSuccess"
+          x-codeSamples:
+            - lang: curl
+              label: Example Login
+              source: |
+                curl -X POST "http://localhost:3000/auth/login" \
+                -H "Content-Type: application/json" \
+                -d '{"email": "test@plantpal.com", "password": "password123"}'
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Authentication service error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register a new user
+      description: |
+        Creates a new user by delegating account creation to the **User-Service**.
+        Passwords are hashed securely using **bcrypt** and a **JWT token** is returned upon success.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: newuser@plantpal.com
+                password:
+                  type: string
+                  format: password
+                  example: plantpass123
+                role:
+                  type: string
+                  example: gardener
+      responses:
+        "201":
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterSuccess"
+          x-codeSamples:
+            - lang: curl
+              label: Example Register
+              source: |
+                curl -X POST "http://localhost:3000/auth/register" \
+                -H "Content-Type: application/json" \
+                -d '{"email": "newuser@plantpal.com", "password": "plantpass123", "role": "gardener"}'
+        "409":
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Registration failed due to internal error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /health:
+    get:
+      tags: [System]
+      summary: Service health check
+      description: Used by Docker, ECS, or load balancers to verify that the service is healthy.
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+components:
+  # securitySchemes:
+  #   bearerAuth:
+  #     type: http
+  #     scheme: bearer
+  #     bearerFormat: JWT
+
+  schemas:
+    LoginSuccess:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Login successful
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              example: jsud-f8234jfsd
+            email:
+              type: string
+              example: test@plantpal.com
+            role:
+              type: string
+              example: gardener
+
+    RegisterSuccess:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Registration successful
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              example: jsud-f8234jfsd
+            email:
+              type: string
+              example: newuser@plantpal.com
+            role:
+              type: string
+              example: gardener
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: An unexpected error occurred
+        code:
+          type: integer
+          example: 500
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: healthy
+        service:
+          type: string
+          example: login-service
+        uptime:
+          type: number
+          example: 1023.45
+
+security:
+  - bearerAuth: []

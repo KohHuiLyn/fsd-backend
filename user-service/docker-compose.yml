@@ -1,0 +1,36 @@
+services:
+  app:
+    build: .
+    container_name: user-service
+    image: user-service
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/plantpal?schema=public
+      - INTERNAL_API_SECRET=my-super-secret-key
+    depends_on:
+      - postgres
+    networks:
+      - plantpal-net
+
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: plantpal
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - plantpal-net
+
+networks:
+  plantpal-net:
+    driver: bridge
+
+volumes:
+  pgdata:

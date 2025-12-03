@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Lambda to send notifications via Twilio
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 10
+    MemorySize: 256
+    Architectures: [arm64]
+    Tracing: Active
+
+Resources:
+
+  SendReminderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: sendReminder
+      Handler: src/handler.handler
+      Description: Sends SMS/WhatsApp via Twilio and returns { ok, ... }
+      Environment:
+        Variables:
+          TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}      # <-- put your real SID
+          TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}         # <-- your auth token
+          TWILIO_FROM: +12055351098                     # or whatsapp:+14155238886
+
+Outputs:
+  SendReminderArn:
+    Value: !GetAtt SendReminderFunction.Arn
+    Export: { Name: SendReminderArn }

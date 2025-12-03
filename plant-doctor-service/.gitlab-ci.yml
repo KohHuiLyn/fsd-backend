@@ -1,0 +1,127 @@
+image: docker:24.0.6
+
+services:
+  - docker:25.0.2-dind
+
+stages:
+  - lint
+  - test
+  # - build
+  - dockerize
+  - retrain
+  # - approve
+  - deploy
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_HOST: tcp://docker:2376
+  DOCKER_CERT_PATH: /certs/client
+  DOCKER_TLS_VERIFY: 1
+  AWS_DEFAULT_REGION: "ap-southeast-1"
+
+before_script:
+  - echo "🔧 Preparing job environment..."
+
+# ───────────────────────────────
+# 🧹 LINT
+# ───────────────────────────────
+lint:
+  stage: lint
+  image: python:3.10-slim
+  script:
+    - echo "🔍 Linting and formatting Plant Doctor service..."
+    - pip install --upgrade pip flake8 black
+    - black --check . || echo "⚠️ Code not formatted properly"
+    - flake8 . --ignore=E501 || true
+  only:
+    - main
+    - merge_requests
+  allow_failure: true    # don’t fail pipeline just for formatting
+
+# ───────────────────────────────
+# 🧪 TEST
+# ───────────────────────────────
+test:
+  stage: test
+  image: python:3.10-slim
+  script:
+    - echo "🧪 Running tests on plant-doctor-service..."
+    - pip install --upgrade pip
+    - pip install -r requirements.txt pytest
+    - pytest || echo "⚠️ No tests yet"
+  only:
+    - main
+    - merge_requests
+
+# # ───────────────────────────────
+# # 🏗️ BUILD
+# # ───────────────────────────────
+# build:
+#   stage: build
+#   script:
+#     - echo "🏗️ Building Docker image for plant-doctor-service..."
+#     - docker build -t plant-doctor:latest . # can remove this cos need to build again in next step actually
+#   only:
+#     - main
+
+# ───────────────────────────────
+# 🐳 DOCKERIZE
+# ───────────────────────────────
+dockerize:
+  stage: dockerize
+  script:
+    - apk add --no-cache python3 py3-pip
+    - pip install --upgrade pip awscli
+    - echo "🐳 Pushing plant-doctor-service Docker image to AWS ECR..."
+    - docker build -t plant-doctor:latest .
+    - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $(echo $ECR_REPO | cut -d'/' -f1)
+    - docker tag plant-doctor:latest $ECR_REPO:latest
+    - docker push $ECR_REPO:latest
+  only:
+    - main
+
+# ───────────────────────────────
+# 🧠 RETRAIN MODEL
+# ───────────────────────────────
+retrain_model:
+  stage: retrain
+  image: python:3.10-slim
+  before_script:
+    # all env vars should come from GitLab CI/CD → Settings → Variables
+    - pip install --upgrade pip "sagemaker>=2.197" boto3 python-dotenv tensorflow
+    # - pip install --upgrade pip boto3 sagemaker python-dotenv tensorflow
+  script:
+    - echo "🧠 Starting SageMaker model retraining..."
+    - python sagemaker_retrain.py --epochs 5 --wait
+  only:
+    - main
+  when: manual           # optional → run retraining manually
+  allow_failure: false
+
+# # ───────────────────────────────
+# # 🟡 APPROVE (Manual)
+# # ───────────────────────────────
+# approve:
+#   stage: approve
+#   when: manual
+#   script:
+#     - echo "🟡 Waiting for manual approval before ECS deploy..."
+#   only:
+#     - main
+
+# ───────────────────────────────
+# 🚀 DEPLOY
+# ───────────────────────────────
+deploy:
+  stage: deploy
+  script:
+    - echo "🚀 Deploying plant-doctor-service to ECS cluster..."
+    # - aws ecs update-service \
+    #     --cluster plant-doctor-cluster \
+    #     --service plant-doctor-service \
+    #     --force-new-deployment \
+    #     --region $AWS_DEFAULT_REGION
+  only:
+    - main
+  when: manual

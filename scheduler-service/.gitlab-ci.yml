@@ -1,0 +1,123 @@
+image: docker:24.0.6
+
+services:
+  - docker:25.0.2-dind
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_HOST: tcp://docker:2376
+  DOCKER_CERT_PATH: /certs/client
+  DOCKER_TLS_VERIFY: 1
+
+stages:
+  - lint
+  - test
+  - build
+  - dockerize
+  - staging
+  - approve
+  - deploy
+
+before_script:
+  - set -xe
+  - apk add --no-cache bash aws-cli
+
+# ──────────────────────────────
+# Lint + Prettier
+# ──────────────────────────────
+lint:
+  stage: lint
+  image: node:20-alpine
+  script:
+    - echo "🔍 Linting & Formatting scheduler-service..."
+    - npm ci
+    - echo "✨ Checking formatting with Prettier..."
+    - npx prettier --check . || echo "⚠️ Prettier found issues, continuing..."
+    - echo "🧹 Running ESLint..."
+    - npx eslint . || echo "No ESLint config found"
+  allow_failure: true
+
+# ──────────────────────────────
+# Unit Tests (Jest)
+# ──────────────────────────────
+test:
+  stage: test
+  image: node:20-alpine
+  script:
+    - echo "🧪 Running Jest tests for scheduler-service..."
+    - npm ci
+    - npm test || echo "⚠️ No tests yet"
+  only:
+    - main
+    - merge_requests
+
+# ──────────────────────────────
+# Build (TypeScript transpile if needed)
+# ──────────────────────────────
+build:
+  stage: build
+  image: node:20-alpine
+  script:
+    - echo "🏗️ Installing dependencies..."
+    - npm ci
+    - npm run build || echo "⚠️ No build script"
+  artifacts:
+    paths:
+      - dist/
+  only:
+    - main
+
+# ──────────────────────────────
+# Dockerize (Build + Push ECR)
+# ──────────────────────────────
+dockerize:
+  stage: dockerize
+  script:
+    - echo "🐳 Building and pushing Docker image to AWS ECR..."
+    - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $(echo $ECR_REPO | cut -d'/' -f1)
+    - docker build -t $ECR_REPO:latest .
+    - docker push $ECR_REPO:latest
+  only:
+    - main
+
+# ──────────────────────────────
+# Staging Deploy (Railway optional)
+# ──────────────────────────────
+staging:
+  stage: staging
+  image: node:20-alpine
+  script:
+    - echo "🚀 Deploying scheduler-service to Railway staging..."
+    - npm install -g @railway/cli
+    - railway up --service scheduler-service
+  only:
+    - main
+  when: manual # make staging optional
+
+# ──────────────────────────────
+# Manual Approval before Prod
+# ──────────────────────────────
+approve:
+  stage: approve
+  when: manual
+  script:
+    - echo "🟡 Awaiting manual approval for production deployment..."
+  only:
+    - main
+
+# ──────────────────────────────
+# Production Deploy (AWS ECS)
+# ──────────────────────────────
+deploy:
+  stage: deploy
+  script:
+    - echo "🌿 Deploying scheduler-service to AWS ECS..."
+    - aws ecs update-service \
+      --cluster $ECS_CLUSTER \
+      --service $ECS_SERVICE \
+      --force-new-deployment \
+      --region $AWS_DEFAULT_REGION
+  only:
+    - main
+  when: manual

@@ -1,0 +1,155 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Plant Catalog microservice (proxy to Perenual v2 API)
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 10
+    MemorySize: 256
+    Architectures: [arm64]
+
+Parameters:
+  PerenualApiKey:
+    Type: String
+    NoEcho: true
+  PublicApiId:
+    Type: String
+    Description: Existing HTTP API Gateway ID (must exist)
+
+Resources:
+  # Single Lambda for Plant Catalog API
+  PlantCatalogFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: plantCatalog
+      Handler: src/handler.handler
+      Environment:
+        Variables:
+          PERENUAL_API_KEY: !Ref PerenualApiKey
+          PERENUAL_BASE: "https://perenual.com/api"
+          PERENUAL_VERSION: "v2"
+
+  # ──────────────────────────────
+  # Integrations + Routes
+  # ──────────────────────────────
+
+  # /plants/v2/species-list
+  IntSpeciesList:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref PublicApiId
+      IntegrationType: AWS_PROXY
+      PayloadFormatVersion: "2.0"
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PlantCatalogFn.Arn}/invocations
+
+  RouteSpeciesList:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref PublicApiId
+      RouteKey: "GET /plants/v2/species-list"
+      Target: !Sub integrations/${IntSpeciesList}
+
+  PermSpeciesList:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref PlantCatalogFn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${PublicApiId}/*/GET/plants/v2/species-list
+
+  # /plants/v2/species/details/{id}
+  IntSpeciesDetails:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref PublicApiId
+      IntegrationType: AWS_PROXY
+      PayloadFormatVersion: "2.0"
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PlantCatalogFn.Arn}/invocations
+
+  RouteSpeciesDetails:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref PublicApiId
+      RouteKey: "GET /plants/v2/species/details/{id}"
+      Target: !Sub integrations/${IntSpeciesDetails}
+
+  PermSpeciesDetails:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref PlantCatalogFn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${PublicApiId}/*/GET/plants/v2/species/details/*
+
+  # /plants/pest-disease-list
+  IntPestDisease:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref PublicApiId
+      IntegrationType: AWS_PROXY
+      PayloadFormatVersion: "2.0"
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PlantCatalogFn.Arn}/invocations
+
+  RoutePestDisease:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref PublicApiId
+      RouteKey: "GET /plants/pest-disease-list"
+      Target: !Sub integrations/${IntPestDisease}
+
+  PermPestDisease:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref PlantCatalogFn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${PublicApiId}/*/GET/plants/pest-disease-list
+
+  # /plants/species-care-guide-list
+  IntCareGuide:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref PublicApiId
+      IntegrationType: AWS_PROXY
+      PayloadFormatVersion: "2.0"
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PlantCatalogFn.Arn}/invocations
+
+  RouteCareGuide:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref PublicApiId
+      RouteKey: "GET /plants/species-care-guide-list"
+      Target: !Sub integrations/${IntCareGuide}
+
+  PermCareGuide:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref PlantCatalogFn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${PublicApiId}/*/GET/plants/species-care-guide-list
+
+  # /plants/hardiness-map
+  IntHardiness:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref PublicApiId
+      IntegrationType: AWS_PROXY
+      PayloadFormatVersion: "2.0"
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PlantCatalogFn.Arn}/invocations
+
+  RouteHardiness:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref PublicApiId
+      RouteKey: "GET /plants/hardiness-map"
+      Target: !Sub integrations/${IntHardiness}
+
+  PermHardiness:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref PlantCatalogFn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${PublicApiId}/*/GET/plants/hardiness-map

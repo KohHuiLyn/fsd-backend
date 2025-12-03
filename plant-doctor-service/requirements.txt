@@ -1,0 +1,6 @@
+flask
+boto3
+numpy
+pillow
+python-dotenv
+sagemaker>=2.218.0
