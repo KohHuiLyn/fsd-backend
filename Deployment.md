@@ -387,6 +387,8 @@ s3:PutObject, s3:GetObject, s3:DeleteObject on this bucket.
 ### 11.2 SageMaker (Plant Doctor)
 Plant doctor service calls a SageMaker inference endpoint.
 
+Please look at the SageMaker Setup in AWS PDF inside Plant-Doctor-Service to see how to setup in more detail.
+
 Environment variable: SAGEMAKER_ENDPOINT_NAME.
 
 IAM permissions on ecsTaskRole to invoke the endpoint.

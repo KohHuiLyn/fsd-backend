@@ -6,7 +6,7 @@ A Flask-based microservice that provides plant disease diagnosis using a TensorF
 
 The Plant Doctor Service is a REST API that leverages AWS SageMaker to perform real-time inference on plant images. It classifies plant leaves into one of seven categories: healthy, complex, or one of five disease types (frog_eye_leaf_spot, multiple_diseases, powdery_mildew, rust, or scab).
 
-Please look at the SageMaker Setup in AWS PDF to see how to setup in more detail.
+Please look at the SageMaker Setup in AWS PDF in Plant Doctor Service to see how to setup SageMaker in more detail.
 
 ## Routes
 
