@@ -1,3 +1,11 @@
+/**
+ * SQL query definitions for the user-plants service.
+ *
+ * This module centralises the raw SQL strings used by the data-access layer,
+ * so route handlers and transaction helpers can import the queries they need
+ * without hard-coding SQL throughout the codebase.
+ */
+
 const isEligiblequery = `
     SELECT EXISTS (
         SELECT 1 FROM user_plants.user_plant_list 
@@ -59,6 +67,14 @@ const searchQuery = `
 `;
 // ORDER BY created_at DESC, agent_ID DESC LIMIT 10;
 
+/**
+ * Build a dynamic UPDATE statement for `user_plants.user_plant_list`.
+ *
+ * The caller passes an array of field assignments such as
+ *   ["name = $2", "notes = $3"]
+ * and this helper injects them into the SET clause while always
+ * updating `updated_at` to the current timestamp.
+ */
 async function dynamicUpdate(fields) {
     const updateQuery = `
         UPDATE user_plants.user_plant_list

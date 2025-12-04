@@ -2,42 +2,59 @@ import { dbPool } from "./pool.js";
 import * as proxyQuery from "./query.js";
 import * as proxyException from "../utils/exceptions.js";
 
+// Re-exported `Pool` instance from `pool.js` used to acquire clients
+// for the transactional functions below.
 const pool = dbPool;
 
-async function isElligible({userID, id}) {
+/**
+ * Check whether the given `userID` is allowed to operate on the proxy record.
+ *
+ * Returns `true` if a matching row exists, otherwise throws a `ForbiddenError`
+ * so that callers don't accidentally leak information about the existence of
+ * other users' records.
+ */
+async function isElligible({ userID, id }) {
   console.log(userID, id);
   try {
-    const {rows } = await pool.query(proxyQuery.isEligiblequery, [id, userID]);
+    const { rows } = await pool.query(proxyQuery.isEligiblequery, [id, userID]);
     if (rows.length === 0) throw new proxyException.NotFoundError();
     return !!rows[0].eligible;
   } catch (e) {
-    console.error('Error reading user: ', e)
-      // throw e;
-      throw new proxyException.ForbiddenError();
+    console.error("Error reading user: ", e);
+    // Hide underlying reason from the caller and return a generic forbidden error.
+    throw new proxyException.ForbiddenError();
   }
 }
 
-async function createProxy({userID, name, startDate, endDate, phoneNumber}) {
+/**
+ * Create a new proxy entry inside a transaction.
+ *
+ * On success the function commits and returns the new proxy ID.
+ * On failure it rolls back the transaction and rethrows the error.
+ */
+async function createProxy({ userID, name, startDate, endDate, phoneNumber }) {
   const client = await pool.connect();
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     const values = [userID, name, startDate, endDate, phoneNumber];
     const result = await client.query(proxyQuery.insertQuery, values);
 
     const reminderID = result.rows[0].id;
-    
+
     await client.query("COMMIT");
     return reminderID;
   } catch (e) {
-    try { await client.query("ROLLBACK"); } catch {}
-      throw e;
+    try {
+      await client.query("ROLLBACK");
+    } catch {}
+    throw e;
   } finally {
     client.release();
   }
 }
 
-// NOT FOR PROD
+// NOT FOR PROD – debug helper to fetch a single proxy by ID regardless of user.
 async function getProfileByID({ id }) {
   const client = await pool.connect();
   try {
@@ -55,7 +72,7 @@ async function getProfileByID({ id }) {
     client.release();
   }
 }
-// NOT FOR PROD
+// NOT FOR PROD – debug helper to list all proxy records.
 async function getAllProfiles() {
   const client = await pool.connect();
   try {
@@ -71,7 +88,10 @@ async function getAllProfiles() {
   }
 }
 
-async function getProxyByID({id, userID}) {
+/**
+ * Fetch a single proxy record for a given user, enforcing ownership.
+ */
+async function getProxyByID({ id, userID }) {
   const client = await pool.connect();
   try {
     const ok = await isElligible({ userID, id});
@@ -88,7 +108,10 @@ async function getProxyByID({id, userID}) {
   }
 }
 
-async function getProxysByUserID({userID}) {
+/**
+ * List all proxies owned by a specific user, ordered by creation time.
+ */
+async function getProxysByUserID({ userID }) {
   const client = await pool.connect();
   try {
     const {rows} = await client.query(proxyQuery.getByUserIDQuery, [userID]);
@@ -102,7 +125,13 @@ async function getProxysByUserID({userID}) {
 }
 
 
-async function searchProxys ({userID, searchValue, limit, offset}) {
+/**
+ * Search proxies for a specific user by (optional) name filter with pagination.
+ *
+ * If no rows are found, a `NotFoundError` is thrown so the caller can map
+ * this to a 404-style response.
+ */
+async function searchProxys({ userID, searchValue, limit, offset }) {
   const client = await pool.connect();
   try {
     const { rows } = await client.query(proxyQuery.searchQuery, [
@@ -122,7 +151,20 @@ async function searchProxys ({userID, searchValue, limit, offset}) {
   }
 }
 
-async function updateProxys({id, userID, name, startDate, endDate, phoneNumber}) {
+/**
+ * Partially update a proxy record inside a transaction.
+ *
+ * Only non-undefined fields are included in the generated UPDATE statement.
+ * If there is nothing to update the function returns `null` immediately.
+ */
+async function updateProxys({
+  id,
+  userID,
+  name,
+  startDate,
+  endDate,
+  phoneNumber,
+}) {
   const client = await pool.connect();
   try {
     const ok = await isElligible({ userID, id});
@@ -132,6 +174,7 @@ async function updateProxys({id, userID, name, startDate, endDate, phoneNumber})
     const values = [];
     let i = 1;
 
+    // Helper to append a new "field = $n" fragment and its corresponding value.
     const push = (sqlFragment, value) => {
       fields.push(`${sqlFragment} $${++i}`);
       values.push(value);
@@ -165,7 +208,13 @@ async function updateProxys({id, userID, name, startDate, endDate, phoneNumber})
   }
 }
 
-async function deleteProxy({id, userID}) {
+/**
+ * Delete a proxy record belonging to a given user inside a transaction.
+ *
+ * The record must both exist and be owned by `userID`; otherwise an error is
+ * thrown and the transaction is rolled back.
+ */
+async function deleteProxy({ id, userID }) {
   const client = await pool.connect();
   try {
     const ok = await isElligible({ id, userID, client});

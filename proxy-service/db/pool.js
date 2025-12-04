@@ -1,3 +1,11 @@
+// Database connection pool for the proxy service.
+// 
+// This module is responsible for:
+// - Reading the Postgres connection details from AWS Secrets Manager
+// - Loading the RDS CA certificates from disk
+// - Creating and exporting a singleton `Pool` instance with TLS enabled
+//
+// The exported `dbPool` is used by query/transaction helpers in this service.
 import pg from "pg";
 import fs from "fs";
 import path from "path";
@@ -9,18 +17,33 @@ import {
 } from "@aws-sdk/client-secrets-manager";
 // import * as secretsClient from "./secrets";
 const { Pool } = pg;
+
+// Client used to fetch database credentials from Secrets Manager.
 const client = new SecretsManagerClient({
   region: "ap-southeast-1",
 });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// RDS bundle + Amazon root CA used to validate the TLS connection to Postgres.
 const caCert = fs.readFileSync(path.join(__dirname, 'cert', 'global-bundle.pem')).toString();
 // const atsRoot = fs.readFileSync(path.join(__dirname, 'cert', 'AmazonRootCA1.pem'),'utf8');
 const atsRoot = fs.readFileSync(path.join(__dirname, 'cert', 'AmazonRootCA1.pem')).toString(); // disable ca: caCert, enalble require:true
-// const secret_name = "fsd-proxy-service-user";
+
+// Name of the Secrets Manager secret that stores DB credentials.
+// This is injected via the `DB_SECRET` environment variable so different
+// environments (dev, test, prod) can point at different secrets.
 const secret_name = process.env.DB_SECRET;
 
+/**
+ * Initialise a Postgres connection pool by:
+ *  - Fetching credentials from AWS Secrets Manager
+ *  - Creating a `pg.Pool` configured with TLS using the local CA bundle
+ *
+ * The function deliberately throws on any failure so the service fails fast
+ * at startup rather than running with a misconfigured database connection.
+ */
 async function initPool() {
   try {
     const response = await client.send(
@@ -29,7 +52,6 @@ async function initPool() {
         VersionStage: "AWSCURRENT", // VersionStage defaults to AWSCURRENT if unspecified
       })
     );
-    // const secret = response.SecretString;
     const secret = JSON.parse(response.SecretString);
 
     const pool = new Pool({
@@ -56,92 +78,5 @@ async function initPool() {
   }
 }
 
+// Export a single, shared `Pool` instance that is initialised once at module load.
 export const dbPool = await initPool();
-// const { Pool } = pg;
-
-// const pool = new Pool({
-//   // connectionString: process.env.DATABASE_URL,
-//   // ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
-//   options: '-c search_path=profiles,public',
-// });
-
-// export default pool;
-
-// Use this code snippet in your app.
-// If you need more information about configurations or implementing the sample code, visit the AWS docs:
-// https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/getting-started.html
-
-
-
-
-
-// let response;
-
-// try {
-//   response = await client.send(
-//     new GetSecretValueCommand({
-//       SecretId: secret_name,
-//       VersionStage: "AWSCURRENT", // VersionStage defaults to AWSCURRENT if unspecified
-//     })
-//   );
-// } catch (error) {
-//   // For a list of exceptions thrown, see
-//   // https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
-//   throw error;
-// }
-
-// const secret = response.SecretString;
-
-// Your code goes here
-
-
-// Schema??
-// CREATE DATABASE IF NOT EXISTS profileDB;
-// CREATE SCHEMA IF NOT EXISTS profiles;
-
-// case incencetive extension on AWS??
-// CREATE EXTENSION IF NOT EXISTS citext;
-// -- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-// CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
-// DO $$
-// BEGIN
-//   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'gender_enum') THEN
-//     CREATE TYPE gender_enum AS ENUM ('M', 'F');
-//   END IF;
-
-//   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'status_enum') THEN
-//     CREATE TYPE status_enum AS ENUM ('Active', 'Inactive', 'Disabled');
-//   END IF;
-// END$$;
-
-// -- Profiles table
-// CREATE TABLE IF NOT EXISTS profiles.profile_list (
-//   id                 uuid                PRIMARY KEY DEFAULT gen_random_uuid()
-//   first_name         text                NOT NULL,
-//   last_name          text                NOT NULL,
-//   date_of_birth      date                NOT NULL,
-//   gender             gender_enum         NOT NULL,
-//   email              citext              NOT NULL,
-//   phone_number       text                NOT NULL,
-//   address            text                NOT NULL CHECK (char_length(address)  BETWEEN 5 AND 100),
-//   city               text                NOT NULL CHECK (char_length(city)     BETWEEN 2 AND 50),
-//   state              text                NOT NULL CHECK (char_length(state)    BETWEEN 2 AND 50),
-//   country            text                NOT NULL CHECK (char_length(country)  BETWEEN 2 AND 50),
-//   postal             text                NOT NULL CHECK (char_length(postal)   BETWEEN 4 AND 10),
-//   status             status_enum         NOT NULL DEFAULT 'Inactive',
-//   agent_id           uuid                NOT NULL REFERENCES admins(id) ON DELETE RESTRICT,
-//   created_at         timestamptz         NOT NULL DEFAULT now()
-//   deleted_at         timestamptz,
-//   deleted_by         uuid,
-//   delete_reason      text,
-//   CONSTRAINT phone_format CHECK (phone_number ~ '^\+?[1-9]\d{9,14}$')
-// );
-
-// -- Indexes:
-// -- List agents by admin (Paginated by agent_id)
-// CREATE        INDEX IF NOT EXISTS idx_profile_list_agent_id ON profiles.profile_list (agent_id, created_at DESC);
-// CREATE UNIQUE INDEX IF NOT EXISTS ux_profile_list_email_ci_active      ON profiles.profile_list (email)        WHERE deleted_at IS NULL;
-// CREATE UNIQUE INDEX IF NOT EXISTS ux_profile_list_phone_number_active  ON profiles.profile_list (phone_number) WHERE deleted_at IS NULL;
-// CREATE        INDEX IF NOT EXISTS idx_profile_city_state_country       ON profiles.profile_list (country, state, city);
-

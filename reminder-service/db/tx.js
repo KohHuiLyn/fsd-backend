@@ -2,41 +2,55 @@ import { dbPool } from "./pool.js";
 import * as reminderQuery from "./query.js";
 import * as reminderException from "../utils/exceptions.js";
 
+// Shared `Pool` instance from `pool.js` used to acquire clients for
+// transactional operations in this module.
 const pool = dbPool;
 
-async function isElligible({userID, id}) {
+/**
+ * Check whether the given `userID` is allowed to access the reminder record.
+ *
+ * Returns true if a matching row exists; otherwise throws a `ForbiddenError`
+ * so callers cannot infer whether a reminder exists for another user.
+ */
+async function isElligible({ userID, id }) {
   console.log(userID, id);
   try {
-    const {rows } = await pool.query(reminderQuery.isEligiblequery, [id, userID]);
+    const { rows } = await pool.query(reminderQuery.isEligiblequery, [id, userID]);
     if (rows.length === 0) throw new reminderException.NotFoundError();
     return !!rows[0].eligible;
   } catch (e) {
-    console.error('Error reading agent: ', e)
-      throw new reminderException.ForbiddenError();
+    console.error("Error reading agent: ", e);
+    throw new reminderException.ForbiddenError();
   }
 }
 
-async function createReminder({userID, name, notes, isActive, dueAt, dueDay, isProxy, proxy }) {
+/**
+ * Create a new reminder for a user inside a database transaction.
+ *
+ * On success the transaction commits and the new reminder ID is returned.
+ * On failure the transaction is rolled back and the error is rethrown.
+ */
+async function createReminder({ userID, name, notes, isActive, dueAt, dueDay, isProxy, proxy }) {
   const client = await pool.connect();
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     const values = [userID, name, notes, isActive, dueAt, dueDay, isProxy, proxy];
     const result = await client.query(reminderQuery.insertReminderQuery, values);
 
     const reminderID = result.rows[0].id;
-    
+
     await client.query("COMMIT");
     return reminderID;
   } catch (e) {
     try { await client.query("ROLLBACK"); } catch {}
-      throw e;
+    throw e;
   } finally {
     client.release();
   }
 }
 
-// NOT FOR PROD
+// NOT FOR PROD – debug helper to inspect a single reminder by ID.
 async function getProfileByID({ id }) {
   const client = await pool.connect();
   try {
@@ -53,7 +67,7 @@ async function getProfileByID({ id }) {
     client.release();
   }
 }
-// NOT FOR PROD
+// NOT FOR PROD – debug helper to list all reminders.
 async function getAllProfiles() {
   const client = await pool.connect();
   try {
@@ -68,7 +82,10 @@ async function getAllProfiles() {
   }
 }
 
-async function getReminderByID({id, userID}) {
+/**
+ * Fetch a single reminder by ID for the given user, enforcing ownership.
+ */
+async function getReminderByID({ id, userID }) {
   const client = await pool.connect();
   try {
     const ok = await isElligible({ userID, id});
@@ -85,7 +102,10 @@ async function getReminderByID({id, userID}) {
   }
 }
 
-async function getRemindersByUserID({userID}) {
+/**
+ * List all reminders that belong to a specific user.
+ */
+async function getRemindersByUserID({ userID }) {
   const client = await pool.connect();
   try {
     const {rows} = await client.query(reminderQuery.getByUserIDQuery, [userID]);
@@ -98,6 +118,13 @@ async function getRemindersByUserID({userID}) {
   }
 }
 
+/**
+ * Return reminders that should fire in the next `windowSec` seconds.
+ *
+ * This is primarily used by the scheduler service to pull work from the
+ * reminder queue. Additional debug logging is included to make it easier
+ * to reason about time-window logic in production.
+ */
 async function getRemindersDueSoon({ windowSec }) {
   const client = await pool.connect();
   try {
@@ -125,7 +152,23 @@ async function getRemindersDueSoon({ windowSec }) {
   }
 }
 
-async function updateReminder({ id, userID, name, notes, isActive, dueAt, dueDay, isProxy, proxy }) {
+/**
+ * Partially update a reminder inside a transaction.
+ *
+ * Only non-undefined fields are included in the generated UPDATE statement.
+ * If there is nothing to update the function returns `null` immediately.
+ */
+async function updateReminder({
+  id,
+  userID,
+  name,
+  notes,
+  isActive,
+  dueAt,
+  dueDay,
+  isProxy,
+  proxy,
+}) {
   const client = await pool.connect();
   try {
     const ok = await isElligible({ userID, id});
@@ -135,6 +178,7 @@ async function updateReminder({ id, userID, name, notes, isActive, dueAt, dueDay
     const values = [];
     let i = 1;
 
+    // Helper to append a new "field = $n" fragment and its corresponding value.
     const push = (sqlFragment, value) => {
       fields.push(`${sqlFragment} $${++i}`);
       values.push(value);
@@ -172,7 +216,13 @@ async function updateReminder({ id, userID, name, notes, isActive, dueAt, dueDay
   }
 }
 
-async function deleteReminder({id, userID}) {
+/**
+ * Delete a reminder belonging to a given user inside a transaction.
+ *
+ * The reminder must exist and belong to `userID`; otherwise an error is
+ * thrown and the transaction is rolled back.
+ */
+async function deleteReminder({ id, userID }) {
   const client = await pool.connect();
   try {
     const ok = await isElligible({ id, userID, client});

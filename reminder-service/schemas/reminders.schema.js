@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+/**
+ * Zod schemas for validating reminder-related payloads.
+ *
+ * These schemas are used by the validation middlewares to ensure that
+ * request bodies and params are well-formed before they reach the
+ * transaction layer.
+ */
+
 const uuid = z.string().uuid();
 const phoneOptional = z
   .preprocess(

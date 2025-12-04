@@ -1,3 +1,11 @@
+/**
+ * SQL query definitions for the reminder service.
+ *
+ * This module centralises the raw SQL strings used by the data-access layer,
+ * so route handlers and transaction helpers can import the queries they need
+ * without hard-coding SQL throughout the codebase.
+ */
+
 const isEligiblequery = `
     SELECT EXISTS (
         SELECT 1 FROM reminders.reminder_list 

@@ -5,6 +5,15 @@ import remindersRouter from "./routes/reminders.js";
 import { requireAuth } from "./middlewares/auth.js";
 import 'dotenv/config';
 
+/**
+ * Entry point for the reminder service.
+ *
+ * Responsibilities:
+ * - Initialise the Express app and common middleware (Helmet, JSON body parser)
+ * - Expose basic health/readiness endpoints for ECS/Kubernetes
+ * - Mount the `/reminder` routes
+ * - Provide a global error handler that translates known errors into HTTP responses
+ */
 const app = express();
 app.use(helmet());
 app.use(express.json({ limit: "1mb" }));

@@ -1,3 +1,10 @@
+/**
+ * Custom error hierarchy for the user-plants service.
+ *
+ * These classes allow the data and route layers to signal specific error
+ * conditions (validation, not-found, forbidden, etc.) in a consistent way,
+ * which can then be mapped to HTTP responses by the global error handler.
+ */
 export class AppError extends Error {
   constructor(message, status = 500, code = "INTERNAL_ERROR") {
     super(message);

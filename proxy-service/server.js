@@ -6,6 +6,15 @@ import { requireAuth } from "./middlewares/auth.js";
 
 import 'dotenv/config';
 
+/**
+ * Entry point for the proxy service.
+ *
+ * Responsibilities:
+ * - Initialise the Express app and common middleware (Helmet, JSON body parser)
+ * - Expose basic health/readiness endpoints for Kubernetes/ECS
+ * - Mount the authenticated `/proxy` routes
+ * - Provide a global error handler that translates known errors into HTTP responses
+ */
 const app = express();
 app.use(helmet());
 app.use(express.json({ limit: "1mb" }));
@@ -27,7 +36,15 @@ app.get("/", (_req, res) => res.send("API is running"));
 // Root route
 app.use("/proxy", requireAuth, remindersRouter);
 
+
+
 // Global Error Handler
+// 
+// Centralises error handling for all routes. In general:
+// - Known validation / auth / conflict errors are translated into specific
+//   HTTP status codes and JSON payloads.
+// - Unexpected errors fall through to a generic 500 response so that
+//   implementation details are not leaked to clients.
 app.use((err, _req, res, _next) => {
   console.error(err);
   logPgError(err, "Error: ");

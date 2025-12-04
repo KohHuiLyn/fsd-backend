@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+/**
+ * Zod schemas for validating proxy-related payloads.
+ *
+ * These schemas are consumed by the validation middlewares to ensure that
+ * request bodies, params and query strings are well-formed before they hit
+ * the transaction layer.
+ */
+
 // CREATE (POST /proxy)
 export const createSchema = z.object({
   name: z.string().trim().min(1, "A name must be provided!"),

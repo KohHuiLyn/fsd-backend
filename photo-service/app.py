@@ -1,3 +1,13 @@
+"""
+Photo service
+
+Exposes a small Flask API for uploading images to S3 and generating
+time-limited presigned URLs to retrieve them.
+
+Configuration is loaded from an AWS Secrets Manager secret (see SECRET_NAME)
+so that S3 bucket, region, and optional credentials can be injected per environment.
+"""
+
 import os
 import json
 import uuid
@@ -13,6 +23,10 @@ SECRET_NAME = os.environ.get("SECRET_NAME", "fsd-s3-secret")
 SM_REGION = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")  # optional
 
 def read_secret(name: str) -> dict:
+    """
+    Fetch and decode a JSON secret from AWS Secrets Manager.
+    The secret is expected to be a JSON object. Returns it as a Python dict.
+    """
     session = boto3.session.Session(region_name=SM_REGION) if SM_REGION else boto3.session.Session()
     sm = session.client("secretsmanager")
     resp = sm.get_secret_value(SecretId=name)
@@ -21,6 +35,7 @@ def read_secret(name: str) -> dict:
         raw = (resp.get("SecretBinary") or b"").decode("utf-8")
     return json.loads(raw)
 
+# single read at startup, reused for all requests
 cfg = read_secret(SECRET_NAME)
 
 S3_BUCKET = cfg.get("S3_BUCKET") or ""
@@ -31,7 +46,7 @@ S3_REGION = cfg.get("S3_REGION") or SM_REGION or "ap-southeast-1"
 ALLOWED_MIME_PREFIXES = tuple(cfg.get("ALLOWED_MIME_PREFIXES", ["image/"]))
 MAX_CONTENT_LENGTH_MB = int(cfg.get("MAX_CONTENT_LENGTH_MB", 10))
 
-# IDEALLY role credentials. keys are present in the secret for local dev boto 3
+# IDEALLY role-based credentials. Fall back to static keys in secret for local dev
 s3_kwargs = {"region_name": S3_REGION}
 if cfg.get("AWS_ACCESS_KEY_ID") and cfg.get("AWS_SECRET_ACCESS_KEY"):
     s3_kwargs["aws_access_key_id"] = cfg["AWS_ACCESS_KEY_ID"]
@@ -44,17 +59,29 @@ app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH_MB * 1024 * 1024
 
 def _key_for(id_: str) -> str:
+    """Return the S3 object key for a given photo ID."""
     return f"photos/{id_}"
 
 def _is_allowed_mime(mimetype: str) -> bool:
+    """Check that the uploaded file's MIME type is in the allowed prefixes."""
     return any(mimetype.startswith(p) for p in ALLOWED_MIME_PREFIXES)
 
 @app.get("/")
 def health():
+    """Simple health endpoint reporting bucket and region used by this service."""
     return {"ok": True, "bucket": S3_BUCKET, "region": S3_REGION}
 
 @app.post("/upload")
 def upload():
+    """
+    Upload an image to S3 and return a presigned download URL.
+
+    Returns:
+        201 with JSON {id, url, expires_in} on success.
+        400 for missing/empty file.
+        415 for unsupported content type.
+        502 if S3 upload or presign fails.
+    """
     if "file" not in request.files:
         return jsonify(error="missing file"), 400
     file = request.files["file"]
@@ -99,6 +126,7 @@ def upload():
 
 @app.get("/photo/<id_>")
 def get_photo(id_: str):
+    """Redirect to a short-lived presigned URL for the given photo ID."""
     key = _key_for(id_)
     try:
         s3.head_object(Bucket=S3_BUCKET, Key=key)
@@ -123,4 +151,5 @@ def get_photo(id_: str):
     return redirect(url, code=302)
 
 if __name__ == "__main__":
+    # Local development entrypoint; in production this module is run by Gunicorn.
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)

@@ -8,28 +8,45 @@ import FormData from "form-data";
 
 axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
+// Shared `Pool` instance from `pool.js` used to acquire clients for
+// transactional operations in this module.
 const pool = dbPool;
 
-async function isElligible({userID, id}) {
+/**
+ * Check whether the given `userID` is allowed to access the user-plant record.
+ *
+ * Returns true if a matching row exists; otherwise throws a `ForbiddenError`
+ * so callers cannot infer whether a plant exists for another user.
+ */
+async function isElligible({ userID, id }) {
   console.log(userID, id);
   try {
-    const {rows } = await pool.query(upQuery.isEligiblequery, [id, userID]);
+    const { rows } = await pool.query(upQuery.isEligiblequery, [id, userID]);
     if (rows.length === 0) throw new upException.NotFoundError();
     return !!rows[0].eligible;
   } catch (e) {
-    console.error('Error reading user: ', e)
-      // throw e;
-      throw new upException.ForbiddenError();
+    console.error("Error reading user: ", e);
+    // throw e;
+    throw new upException.ForbiddenError();
   }
 }
 
 const PHOTO_SERVICE_URL = process.env.PHOTO_URL;
 
-export async function getS3ID({file}) {
+/**
+ * Call the photo-service to upload a file and return the resulting S3 URL/ID.
+ *
+ * Retries are handled via `axios-retry`. A 404 from photo-service is treated
+ * as "no image" and returns null; other errors are logged and rethrown.
+ */
+export async function getS3ID({ file }) {
   try {
     const formData = new FormData();
-    formData.append('file', file.buffer, { filename: file.originalname, contentType: file.mimetype });
-    const response = await axios.post(`${PHOTO_SERVICE_URL}/upload`, formData,  {
+    formData.append("file", file.buffer, {
+      filename: file.originalname,
+      contentType: file.mimetype,
+    });
+    const response = await axios.post(`${PHOTO_SERVICE_URL}/upload`, formData, {
       headers: {
         ...formData.getHeaders(),
       },
@@ -43,7 +60,13 @@ export async function getS3ID({file}) {
   }
 }
 
-async function createUserPlant({userID, file, name, notes}) {
+/**
+ * Create a new user-plant inside a database transaction.
+ *
+ * The image is first uploaded to the photo-service to obtain an S3 ID,
+ * which is then stored alongside the plant metadata.
+ */
+async function createUserPlant({ userID, file, name, notes }) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -64,7 +87,7 @@ async function createUserPlant({userID, file, name, notes}) {
   }
 }
 
-// NOT FOR PROD
+// NOT FOR PROD – debug helper to inspect a single user-plant by ID.
 async function getProfileByID({ id }) {
   const client = await pool.connect();
   try {
@@ -83,7 +106,7 @@ async function getProfileByID({ id }) {
     client.release();
   }
 }
-// NOT FOR PROD
+// NOT FOR PROD – debug helper to list all user-plants.
 async function getAllProfiles() {
   const client = await pool.connect();
   try {
@@ -100,7 +123,10 @@ async function getAllProfiles() {
   }
 }
 
-async function getUserPlantByID({id, userID}) {
+/**
+ * Fetch a single user-plant by ID, enforcing that it belongs to the current user.
+ */
+async function getUserPlantByID({ id, userID }) {
   const client = await pool.connect();
   try {
     const ok = await isElligible({ userID, id});
@@ -117,7 +143,10 @@ async function getUserPlantByID({id, userID}) {
   }
 }
 
-async function getUserPlantsByUserID({userID}) {
+/**
+ * List all user-plants for a specific user.
+ */
+async function getUserPlantsByUserID({ userID }) {
   const client = await pool.connect();
   try {
     const {rows} = await client.query(upQuery.getByUserIDQuery, [userID]);
@@ -131,7 +160,13 @@ async function getUserPlantsByUserID({userID}) {
 }
 
 
-async function searchUserPlants ({userID, searchValue, limit, offset}) {
+/**
+ * Search user-plants for a specific user by name/notes with pagination.
+ *
+ * If no rows are found, a `NotFoundError` is thrown so callers can map this
+ * to a 404-style response.
+ */
+async function searchUserPlants({ userID, searchValue, limit, offset }) {
   const client = await pool.connect();
   try {
     const { rows } = await client.query(upQuery.searchQuery, [
@@ -151,7 +186,13 @@ async function searchUserPlants ({userID, searchValue, limit, offset}) {
   }
 }
 
-async function updateUserPlants({id, userID, s3ID, name, notes}) {
+/**
+ * Partially update a user-plant inside a transaction.
+ *
+ * Only non-undefined fields are included in the generated UPDATE statement.
+ * If there is nothing to update the function returns `null` immediately.
+ */
+async function updateUserPlants({ id, userID, s3ID, name, notes }) {
   const client = await pool.connect();
   try {
     const ok = await isElligible({ userID, id});
@@ -161,6 +202,7 @@ async function updateUserPlants({id, userID, s3ID, name, notes}) {
     const values = [];
     let i = 1;
 
+    // Helper to append a new "field = $n" fragment and its corresponding value.
     const push = (sqlFragment, value) => {
       fields.push(`${sqlFragment} $${++i}`);
       values.push(value);
@@ -193,7 +235,13 @@ async function updateUserPlants({id, userID, s3ID, name, notes}) {
   }
 }
 
-async function deleteUserPlant({id, userID}) {
+/**
+ * Delete a user-plant belonging to a given user inside a transaction.
+ *
+ * The record must exist and belong to `userID`; otherwise an error is
+ * thrown and the transaction is rolled back.
+ */
+async function deleteUserPlant({ id, userID }) {
   const client = await pool.connect();
   try {
     const ok = await isElligible({ id, userID, client});

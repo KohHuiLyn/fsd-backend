@@ -4,9 +4,17 @@ import { validate, validateParams, validateQuery } from "../middlewares/validate
 import { requireAuth } from "../middlewares/auth.js";
 import * as schema from "../schemas/proxys.schema.js";
 
+/**
+ * Express router for proxy resources.
+ *
+ * All routes are mounted under `/proxy` in `server.js` and assume an
+ * authenticated user (see `requireAuth` middleware). Validation is handled
+ * via Zod schemas in `schemas/proxys.schema.js`, and database access is
+ * delegated to the transaction helpers in `db/tx.js`.
+ */
 const router = Router();
 
-// router.post ("/v1/proxy", requireAuth,  validate(schema.createSchema), async(req, res, next) => {
+// Create a new proxy for the authenticated user.
 router.post ("/v1/proxy/create", requireAuth,  validate(schema.createSchema), async(req, res, next) => {
   try {
       const userID = await req.user?.id;
@@ -26,6 +34,7 @@ router.post ("/v1/proxy/create", requireAuth,  validate(schema.createSchema), as
     }
 });
 
+// Get a single proxy by ID, enforcing that it belongs to the current user.
 router.get ("/v1/proxy/:id", requireAuth, validateParams(schema.paramID), async(req, res, next) => {
   try {
       const userID = await req.user?.id;
@@ -47,6 +56,7 @@ router.get ("/v1/proxy/:id", requireAuth, validateParams(schema.paramID), async(
     }
 });
 
+// List all proxies for the authenticated user.
 router.get ("/v1/proxys", requireAuth, async(req, res, next) => {
   try {
       const userID = await req.user?.id;
@@ -66,7 +76,7 @@ router.get ("/v1/proxys", requireAuth, async(req, res, next) => {
     }
 });
 
-// router.get ("/v1/proxy/search", requireAuth, validateQuery(schema.searchSchema), async(req, res, next) => {
+// Full-text style search over a user's proxies with pagination.
 router.get ("/search", requireAuth, validateQuery(schema.searchSchema), async(req, res, next) => {
   try {
       const userID = await req.user?.id;
@@ -88,6 +98,7 @@ router.get ("/search", requireAuth, validateQuery(schema.searchSchema), async(re
     }
 });
 
+// Partially update a proxy's fields for the authenticated user.
 router.put ("/v1/proxy/:id", requireAuth, validateParams(schema.paramID), validate(schema.updateSchema), async(req, res, next) => {
   try {
       const userID = await req.user?.id;
@@ -109,6 +120,7 @@ router.put ("/v1/proxy/:id", requireAuth, validateParams(schema.paramID), valida
     }
 });
 
+// Delete a proxy belonging to the authenticated user.
 router.delete ("/v1/proxy/:id", requireAuth, validateParams(schema.paramID), async(req, res, next) => {
   try {
       const userID = await req.user?.id;

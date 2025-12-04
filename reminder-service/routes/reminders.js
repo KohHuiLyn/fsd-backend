@@ -1,11 +1,23 @@
 import { Router } from "express";
 import * as reminderTX from "../db/tx.js"
-import { validate, validateParams, validateQuery } from "../middlewares/validate.js";
+import { validate, validateParams } from "../middlewares/validate.js";
 import { requireAuth } from "../middlewares/auth.js";
 import * as schema from "../schemas/reminders.schema.js";
 
+/**
+ * Express router for reminder resources.
+ *
+ * All routes are mounted under `/reminder` in `server.js`. For user-facing
+ * operations an authenticated user is required (see `requireAuth`), while
+ * the scheduler-only endpoint `/v1/reminders/due` is intentionally left
+ * unauthenticated and can be protected via an internal key if needed.
+ *
+ * Validation is handled via Zod schemas in `schemas/reminders.schema.js`,
+ * and database access is delegated to the transactional helpers in `db/tx.js`.
+ */
 const router = Router();
 
+// Create a new reminder for the authenticated user.
 // router.post ("/v1/reminder", requireAuth, validate(schema.createReminderSchema), async(req, res, next) => {
 router.post ("/v1/reminder/create", requireAuth, validate(schema.createReminderSchema), async(req, res, next) => {
   try {
@@ -26,6 +38,7 @@ router.post ("/v1/reminder/create", requireAuth, validate(schema.createReminderS
     }
 });
 
+// Get a single reminder by ID, enforcing that it belongs to the current user.
 router.get ("/v1/reminder/:id", requireAuth, validateParams(schema.paramID), async(req, res, next) => {
   try {
       const userID = await req.user?.id;
@@ -47,6 +60,7 @@ router.get ("/v1/reminder/:id", requireAuth, validateParams(schema.paramID), asy
     }
 });
 
+// List all reminders for the authenticated user.
 router.get ("/v1/reminders", requireAuth, async(req, res, next) => {
   try {
       const userID = await req.user?.id;
@@ -66,7 +80,7 @@ router.get ("/v1/reminders", requireAuth, async(req, res, next) => {
     }
 });
 
-// Scheduler-only endpoint: Get reminders due soon
+// Scheduler-only endpoint: Get reminders due soon within a time window.
 router.get("/v1/reminders/due", async (req, res, next) => {
   try {
       const raw = req.query.windowSec;
@@ -88,23 +102,7 @@ router.get("/v1/reminders/due", async (req, res, next) => {
   }
 });
 
-router.get ("/testAdminID/:adminID", requireAuth, validateParams(schema.getAllAgentByAdminID), async(req, res, next) => {
-  try {
-      const adminID = req.user?.id;
-
-      if (!adminID) {
-        return res.status(403).json({ error: "Forbidden", message: "Missing adminID" });
-      }
-
-      const agents = await agentTX.getAllAgent({});
-
-      if (!agents || agents.length === 0) return res.status(404).json({ error: "NotFound" });
-      return res.status(201).json({ agents });
-    } catch (e) {
-      next(e)
-    }
-});
-
+// Partially update a reminder's fields for the authenticated user.
 router.put ("/v1/reminder/:id", requireAuth, validateParams(schema.paramID), validate(schema.updateReminderSchema), async(req, res, next) => {
   try {
       const userID = await req.user?.id;
@@ -126,6 +124,7 @@ router.put ("/v1/reminder/:id", requireAuth, validateParams(schema.paramID), val
     }
 });
 
+// Delete a reminder belonging to the authenticated user.
 router.delete ("/v1/reminder/:id", requireAuth, validateParams(schema.paramID), async(req, res, next) => {
   try {
       const userID = await req.user?.id;

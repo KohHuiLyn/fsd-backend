@@ -5,9 +5,18 @@ import { requireAuth } from "../middlewares/auth.js";
 import * as schema from "../schemas/userPlants.schema.js";
 import multer from "multer";
 
+/**
+ * Express router for user-plant resources.
+ *
+ * All routes are mounted under `/userPlant` in `server.js` and assume an
+ * authenticated user (see `requireAuth` middleware). Validation is handled
+ * via Zod schemas in `schemas/userPlants.schema.js`, and database access is
+ * delegated to the transaction helpers in `db/tx.js`.
+ */
 const router = Router();
 const upload = multer();
 
+// Create a new user-plant for the authenticated user, including photo upload.
 // router.post ("/v1/userPlant", requireAuth,  upload.single('file'), validate(schema.createUserPlantSchema), async(req, res, next) => {
 router.post ("/v1/userPlant/create", requireAuth,  upload.single('file'), validate(schema.createUserPlantSchema), async(req, res, next) => {
   try {
@@ -30,6 +39,7 @@ router.post ("/v1/userPlant/create", requireAuth,  upload.single('file'), valida
     }
 });
 
+// Get a single user-plant by ID, enforcing that it belongs to the current user.
 router.get ("/v1/userPlant/:id", requireAuth, validateParams(schema.paramID), async(req, res, next) => {
   try {
       const userID = await req.user?.id;
@@ -51,6 +61,7 @@ router.get ("/v1/userPlant/:id", requireAuth, validateParams(schema.paramID), as
     }
 });
 
+// List all user-plants for the authenticated user.
 router.get ("/v1/userPlants", requireAuth, async(req, res, next) => {
   try {
       const userID = await req.user?.id;
@@ -72,6 +83,7 @@ router.get ("/v1/userPlants", requireAuth, async(req, res, next) => {
 
 
 
+// Search a user's plants by name/notes with pagination.
 router.get ("/search", requireAuth, validateQuery(schema.searchSchema), async(req, res, next) => {
   try {
       const userID = await req.user?.id;
@@ -93,6 +105,7 @@ router.get ("/search", requireAuth, validateQuery(schema.searchSchema), async(re
     }
 });
 
+// Partially update a user-plant's fields for the authenticated user.
 router.put ("/v1/userPlant/:id", requireAuth, validateParams(schema.paramID), validate(schema.updateUserPlantSchema), async(req, res, next) => {
   try {
       const userID = await req.user?.id;
@@ -114,6 +127,7 @@ router.put ("/v1/userPlant/:id", requireAuth, validateParams(schema.paramID), va
     }
 });
 
+// Delete a user-plant belonging to the authenticated user.
 router.delete ("/v1/userPlant/:id", requireAuth, validateParams(schema.paramID), async(req, res, next) => {
   try {
       const userID = await req.user?.id;

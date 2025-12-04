@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+/**
+ * Zod schemas for validating user-plant payloads.
+ *
+ * These schemas are used by the validation middlewares to ensure that
+ * request bodies, params and search queries are well-formed before they
+ * hit the transaction layer.
+ */
+
 // CREATE (POST /userPlant)
 export const createUserPlantSchema = z.object({
   s3ID: z.string().optional(),
