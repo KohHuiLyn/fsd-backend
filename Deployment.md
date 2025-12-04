@@ -446,10 +446,6 @@ notification-lambda:
 
 TWILIO_* variables:
 
-TWILIO_ACCOUNT_SID = AC8e1e750e45446a9cfae14b476951fe98
-TWILIO_AUTH_TOKEN  = 8f931392c460528187779b9b3edffea2
-TWILIO_FROM = +12055351098
-
 ## 14. How to Verify Deployment
 Confirm ECS cluster has running tasks for all services.
 
