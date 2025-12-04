@@ -79,7 +79,7 @@ router.get ("/search", requireAuth, validateQuery(schema.searchSchema), async(re
         return res.status(403).json({ error: "Forbidden", message: "Missing userID" });
       }
 
-      const plants = await profileTX.searchProfile({
+      const plants = await upTX.searchUserPlants({
         ...req.validatedQuery, 
         userID,
       });
@@ -111,7 +111,7 @@ router.get ("/search", requireAuth, validateQuery(schema.searchSchema), async(re
 //     }
 // });
 
-router.put ("/v1/userPlant/:id", requireAuth, validateParams(schema.paramID), validate(schema.updateReminderSchema), async(req, res, next) => {
+router.put ("/v1/userPlant/:id", requireAuth, validateParams(schema.paramID), validate(schema.updateUserPlantSchema), async(req, res, next) => {
   try {
       const userID = await req.user?.id;
       const id = await req.validatedParams.id;

@@ -39,7 +39,7 @@ router.get ("/v1/proxy/:id", requireAuth, validateParams(schema.paramID), async(
         id,
       });
 
-      if (!proxy) return res.status(404).json({ error: "NotFound" });
+      // if (!proxy) return res.status(404).json({ error: "NotFound" });
       return res.status(201).json({ proxy });
     } catch (e) {
       next(e)
@@ -58,7 +58,7 @@ router.get ("/v1/proxys", requireAuth, async(req, res, next) => {
         userID,
       });
 
-      if (!proxys || proxys.length === 0) return res.status(404).json({ error: "NotFound" });
+      // if (!proxys || proxys.length === 0) return res.status(404).json({ error: "NotFound" });
       return res.status(201).json({ proxys });
     } catch (e) {
       next(e)
@@ -80,7 +80,7 @@ router.get ("/search", requireAuth, validateQuery(schema.searchSchema), async(re
         userID,
       });
 
-      if (!proxys || proxys.length === 0) return res.status(404).json({ error: "NotFound" });
+      // if (!proxys || proxys.length === 0) return res.status(404).json({ error: "NotFound" });
       return res.status(200).json({ proxys });
     } catch (e) {
       next(e)

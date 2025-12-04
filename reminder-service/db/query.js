@@ -140,8 +140,6 @@ const deleteQuery = `
     WHERE
         id = $1
     RETURNING id;
-        id = $1
-    RETURNING id;
 `;
 
 export {

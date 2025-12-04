@@ -17,7 +17,7 @@ export const updateUserPlantSchema = z.object({
   message: "Provide at least one field to update",
 });
 
-// PARAMS (/clients/?agent_id=)
+// PARAMS 
 export const paramID = z.object({
   id: z.coerce.string().uuid(),
 });

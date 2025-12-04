@@ -18,12 +18,12 @@ async function isElligible({userID, id}) {
   }
 }
 
-async function createReminder({userID, rName, notes, isActive, dueAt, dueDay, isProxy, proxy }) {
+async function createReminder({userID, name, notes, isActive, dueAt, dueDay, isProxy, proxy }) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    const values = [userID, rName, notes, isActive, dueAt, dueDay, isProxy, proxy];
+    const values = [userID, name, notes, isActive, dueAt, dueDay, isProxy, proxy];
     const result = await client.query(reminderQuery.insertReminderQuery, values);
 
     const reminderID = result.rows[0].id;
@@ -162,7 +162,7 @@ async function getRemindersDueSoon({ windowSec }) {
 //   }
 // }
 
-async function updateReminder({ id, userID, rName, notes, isActive, dueAt, dueDay, isProxy, proxy }) {
+async function updateReminder({ id, userID, name, notes, isActive, dueAt, dueDay, isProxy, proxy }) {
   const client = await pool.connect();
   try {
     const ok = await isElligible({ userID, id});
@@ -177,7 +177,7 @@ async function updateReminder({ id, userID, rName, notes, isActive, dueAt, dueDa
       values.push(value);
     };
 
-    if (rName !== undefined) push('name =', rName);
+    if (name !== undefined) push('name =', name);
     if (notes  !== undefined) push('notes =',  notes);
     if (isActive  !== undefined) push('is_active =',  isActive);
     if (isActive  !== undefined) push('is_active =',  isActive);

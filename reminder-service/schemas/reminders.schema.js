@@ -35,18 +35,20 @@ export const createReminderSchema = z.object({
 });
 
 export const updateReminderSchema = z.object({
-  name: z.string().trim().default("Reminder"),
-  notes: z.string(),
-  isActive: z.boolean(),
-  dueAt: z.coerce.date(),
-  dueDay: z.array(z.number()).min(1).max(7).default([1, 2, 3, 4, 5, 6, 7]),
-  isProxy: z.boolean(),
+  name: z.string().trim().default("Reminder").optional(),
+  notes: z.string().optional(),
+  isActive: z.boolean().optional(),
+  dueAt: z.coerce.date().optional(),
+  dueDay: z.array(z.number()).min(1).max(7).default([1, 2, 3, 4, 5, 6, 7]).optional(),
+  isProxy: z.boolean().optional(),
   proxy: z.string() // Format: + | country code | digits (10–15 digits)
     .trim()
     .transform((val) => val.replace(/[\s-]+/g, '')) // Space and - so that +65 8293 8737 or 92-3749-93872 works?
     .refine((val) => /^\+?[1-9]\d{9,14}$/.test(val), {
       message: "Invalid phone number."
-    }),
+    }).optional(),
+}).refine(obj => Object.keys(obj).length > 0, {
+  message: "Provide at least one field to update",
 });
 
 // PARAMS (/clients/?agent_id=)

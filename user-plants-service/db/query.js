@@ -54,7 +54,7 @@ const searchQuery = `
         )
     ORDER BY 
         created_at DESC, 
-        agent_ID DESC
+        user_id DESC
     LIMIT $3 OFFSET $4;
 `;
 // ORDER BY created_at DESC, agent_ID DESC LIMIT 10;
