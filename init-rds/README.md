@@ -46,4 +46,4 @@ It can be deployed by the workflow `init-rds-deploy.yml`.
 - Keeps the RDS instance **private** – no need to open a public port or run SQL manually from a laptop.
 - Encapsulates all schema/bootstrap logic in versioned code.
 - Idempotent: We can re-run it when deploying a fresh environment or after changes to the schema logic.
-- Isolated: We can wipe the DB inbetween testing for manual isolated end-to-end tests.
+- Isolated: We can wipe the DB inbetween testing for manual isolated end-to-end tests. (FIRST principles of testing)
