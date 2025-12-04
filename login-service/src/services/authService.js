@@ -60,7 +60,7 @@ export async function login({ email, password }) {
       body: {
         message: "Login successful",
         token,
-        user: { id: user.id, email: user.email, role: user.role },
+        user: { id: user.id, email: user.email, role: user.role, phoneNumber: user.phone_number },
       },
     };
   } catch (err) {

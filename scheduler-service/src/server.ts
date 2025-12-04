@@ -1,108 +1,53 @@
 import express from "express";
-import {
-  Connection,
-  ScheduleClient,
-  ScheduleOverlapPolicy,
-} from "@temporalio/client";
+import cron from "node-cron";
 import { ENV } from "./env.js";
-
-async function ensurePollingSchedule() {
-  console.log("🕓 Initializing Temporal schedule...");
-
-  let connectionOptions: any = {
-    address: ENV.TEMPORAL_ADDRESS,
-    tls: {}, // always enable TLS for Temporal Cloud
-  };
-
-  // only add apiKey if defined
-  if (ENV.TEMPORAL_API_KEY) {
-    connectionOptions.apiKey = () => ENV.TEMPORAL_API_KEY!;
-  }
-
-  const connection = await Connection.connect(connectionOptions);
-
-  const scheduleClient = new ScheduleClient({
-    connection,
-    namespace: ENV.TEMPORAL_NAMESPACE,
-  });
-
-  const scheduleId = "poll-due-reminders";
-  const everySeconds = Math.max(5, Math.floor(ENV.POLL_INTERVAL_MS / 1000));
-
-  // 🧹 Always try to delete the old schedule first
-  try {
-    const handle = scheduleClient.getHandle(scheduleId);
-    await handle.delete();
-    console.log(
-      `🗑️  Deleted existing schedule "${scheduleId}" (if it existed).`,
-    );
-  } catch {
-    // ignore "not found" errors silently
-  }
-
-  try {
-    const { WorkflowClient } = await import("@temporalio/client");
-    const wfClient = new WorkflowClient({
-      connection,
-      namespace: ENV.TEMPORAL_NAMESPACE, // plantpal.g7sv8
-    });
-
-    console.log("🧹 Checking for old PollDueRemindersWorkflow executions...");
-    const running = await wfClient.list({
-      query: `WorkflowType='PollDueRemindersWorkflow' AND ExecutionStatus='Running'`,
-    });
-
-    for await (const w of running) {
-      console.log(`🚫 Terminating old workflow: ${w.workflowId}`);
-      await wfClient.workflowService.terminateWorkflowExecution({
-        namespace: ENV.TEMPORAL_NAMESPACE,
-        workflowExecution: { workflowId: w.workflowId }, // 👈 nested under workflowExecution
-        reason: "Replacing with new schedule",
-      });
-    }
-  } catch (err) {
-    console.warn(
-      "⚠️ Could not auto-terminate old workflows:",
-      (err as any).message,
-    );
-  }
-
-  console.log(`🆕 Creating new schedule "${scheduleId}"...`);
-
-  await scheduleClient.create({
-    scheduleId,
-    spec: {
-      // Interval-based trigger for clarity
-      intervals: [{ every: `${everySeconds}s` }],
-    },
-    action: {
-      type: "startWorkflow",
-      workflowType: "PollDueRemindersWorkflow",
-      taskQueue: ENV.TASK_QUEUE,
-      args: [],
-    },
-    policies: { overlap: ScheduleOverlapPolicy.SKIP },
-    state: { paused: false },
-  });
-
-  console.log(`✅ Schedule "${scheduleId}" created successfully.`);
-}
+import { pollAndProcessReminders } from "./scheduler.js";
 
 /**
  * Main startup
  */
 async function main() {
-  await ensurePollingSchedule();
+  console.log("🚀 Starting scheduler-service...");
 
+  // Calculate cron expression from POLL_INTERVAL_MS
+  // Default to every 30 seconds if interval is less than 60 seconds
+  const intervalMs = ENV.POLL_INTERVAL_MS;
+  const intervalSeconds = Math.max(5, Math.floor(intervalMs / 1000));
+
+  let cronExpression: string;
+  if (intervalSeconds < 60) {
+    // For intervals less than 60 seconds, use seconds-based cron
+    // Format: "*/X * * * * *" (seconds minutes hours day month weekday)
+    cronExpression = `*/${intervalSeconds} * * * * *`;
+  } else {
+    // For intervals >= 60 seconds, use minutes-based cron
+    const minutes = Math.floor(intervalSeconds / 60);
+    cronExpression = `*/${minutes} * * * *`;
+  }
+
+  console.log(`⏰ Setting up cron job: ${cronExpression} (every ${intervalSeconds}s)`);
+  console.log(`   → Polling every ${intervalSeconds} seconds`);
+  console.log(`   → Due window: ${ENV.DUE_WINDOW_SEC} seconds`);
+
+  // Schedule the cron job
+  cron.schedule(cronExpression, async () => {
+    await pollAndProcessReminders();
+  });
+
+  // Run once immediately on startup (optional, remove if not desired)
+  console.log("🔄 Running initial poll...");
+  await pollAndProcessReminders();
+
+  // Set up Express server for health checks
   const app = express();
   app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
   const PORT = process.env.PORT || 4000;
-  app.listen(PORT, () =>
-    console.log(
-      `scheduler-service running on port ${PORT} and polling every ${ENV.POLL_INTERVAL_MS / 1000}s`,
-    ),
-  );
+  app.listen(PORT, () => {
+    console.log(`✅ scheduler-service running on port ${PORT}`);
+    console.log(`   → Health check: http://localhost:${PORT}/health`);
+    console.log(`   → Polling every ${intervalSeconds} seconds`);
+  });
 }
 
 main().catch((err) => {

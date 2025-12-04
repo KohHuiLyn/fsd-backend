@@ -2,25 +2,22 @@
   "name": "scheduler-service",
   "type": "module",
   "scripts": {
-    "dev:api": "tsx src/server.ts",
-    "dev:worker": "tsx src/worker.ts",
+    "dev": "tsx src/server.ts",
     "build": "tsc",
-    "start:api": "node dist/server.js",
-    "start:worker": "node dist/worker.js"
+    "start": "node dist/server.js"
   },
   "dependencies": {
     "@aws-sdk/client-lambda": "^3.929.0",
-    "@temporalio/client": "^1.13.2",
-    "@temporalio/worker": "^1.13.2",
-    "@temporalio/workflow": "^1.13.2",
     "axios": "^1.7.9",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
+    "node-cron": "^3.0.3",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/express": "^5.0.5",
     "@types/node": "^20.11.0",
+    "@types/node-cron": "^3.0.11",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
