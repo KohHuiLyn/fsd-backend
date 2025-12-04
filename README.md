@@ -25,6 +25,9 @@ This repository contains a microservices-based backend system for a plant care m
 
 ## Architecture Overview
 
+<img width="1280" height="857" alt="image" src="https://github.com/user-attachments/assets/65943e6e-f5e8-4ce8-b864-78ac69ebcb8f" />
+
+
 The backend follows a microservices architecture pattern with the following characteristics:
 - **Service Independence**: Each service operates independently with its own database/state
 - **RESTful APIs**: Most services expose RESTful HTTP endpoints
