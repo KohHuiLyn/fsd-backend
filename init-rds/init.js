@@ -20,7 +20,6 @@ async function getSecretValue() {
                 VersionStage: "AWSCURRENT", // VersionStage defaults to AWSCURRENT if unspecified
             })
         );
-        // const secret = response.SecretString;
         const secret = JSON.parse(response.SecretString);
 
         return secret;
@@ -91,19 +90,6 @@ async function createDB(dbName, masterClient) {
         try { await masterClient.query('SELECT pg_advisory_unlock(hashtext($1))', [dbName]); } catch (_) {}
     }
 }
-
-// async function initAdminsDB(adminsClient) {
-//     try {
-//         await adminsClient.query(`DROP SCHEMA IF EXISTS admins CASCADE;`);
-//         await adminsClient.query(`CREATE SCHEMA IF NOT EXISTS admins;`);
-//         await assertTrue(adminsClient,
-//             `SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname='admins') AS ok`,
-//             "admins schema exists");
-//         await adminsClient.query(`SET search_path TO admins, public;`);
-//     } catch(e) {
-//         console.log("initAdminsDB error: ", e);
-//     }
-// }
 
 async function initUserDB(userClient) {
     try {
@@ -256,14 +242,6 @@ async function initUserPlantDB(serviceClient) {
 
 async function initProxyDB(serviceClient) {
     try {
-        // await serviceClient.query(`
-        //     DO $$
-        //     BEGIN
-        //         IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'profiles_user') THEN
-        //             CREATE ROLE profiles_user WITH LOGIN PASSWORD 'profiles_user_password';
-        //         END IF;
-        //     END $$ LANGUAGE plpgsql;
-        //     `);
         await serviceClient.query(`DROP SCHEMA IF EXISTS proxys CASCADE;`)
         await serviceClient.query(`CREATE SCHEMA IF NOT EXISTS proxys;`);
         await assertTrue(serviceClient,
