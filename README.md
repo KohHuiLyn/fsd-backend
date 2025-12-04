@@ -1213,7 +1213,7 @@ Health check endpoint.
 
 ## Database bootstrap container (`init-rds`)
 
-The `init-rds` folder contains a lightweight Node.js container used to **bootstrap the shared PostgreSQL RDS instance** without exposing it publicly.
+The `init-rds` folder contains a lightweight idempotent Node.js container used to **bootstrap the shared PostgreSQL RDS instance** without exposing it publicly.
 In consideration of budget constraints, instead of running multiple RDS instances, we use a single instance, separated by schema. 
 Since the accoount is free tier, we also lack access to Aurora DB Cluster and RDS proxy for connection pooling
 
